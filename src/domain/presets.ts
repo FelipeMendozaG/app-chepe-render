@@ -236,6 +236,26 @@ export function generateCorrelativeName(
   return `${baseName} ${maxNumber + 1}`;
 }
 
+export function generateCopyName(
+  sourceName: string,
+  entities: readonly Entity[],
+): string {
+  const trimmed = sourceName.trim();
+  const baseName = trimmed.replace(/\s+copia(?:\s+\d+)?$/i, '').trim() || trimmed;
+  const existing = new Set(entities.map((e) => e.name.trim().toLowerCase()));
+
+  const firstCandidate = `${baseName} copia`;
+  if (!existing.has(firstCandidate.toLowerCase())) {
+    return firstCandidate;
+  }
+
+  let index = 2;
+  while (existing.has(`${baseName} copia ${index}`.toLowerCase())) {
+    index += 1;
+  }
+  return `${baseName} copia ${index}`;
+}
+
 export function createEmptyProjectDocument(options?: {
   name?: string;
   description?: string;

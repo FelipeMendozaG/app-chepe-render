@@ -1,6 +1,6 @@
 # Especificación Consolidada de Requerimientos y UX — APP-RENDER-CHEPITA
 
-**Versión:** 0.6 (Consolidación completa de requerimientos, UX, hallazgos del prototipo y decisiones técnicas para MVP)  
+**Versión:** 0.7 (Consolidación completa de requerimientos, UX, hallazgos del prototipo y decisiones técnicas para MVP, incorporando duplicación de piezas y grupos)  
 **Estado:** Definición cerrada y alineada para inicio de implementación del MVP  
 **Enfoque:** Modelador 3D paramétrico genérico, web, local-first y amigable para usuarios sin experiencia previa en 3D  
 
@@ -25,7 +25,7 @@
 * **Sistema de unidades y escala real (RF-02):** Soporte para `mm`, `cm` y `m`. Unidad interna única en **metros** (`1 unidad de mundo = 1 m`). Cambiar la unidad visual modifica solo las etiquetas y formularios, nunca la escala real del objeto.
 * **Creación guiada mediante formularios (RF-03, RF-04):** Creación de primitivas base (**Caja / Tablero**, **Cilindro / Tubo**, **Esfera** y **Superficie / Plano**) a partir de formularios claros con valores iniciales sugeridos.
 * **Objetos rápidos / Atajos de inserción (RF-04B):** Biblioteca visual de atajos predefinidos (tableros, cajas, barras redondas, perfiles rectangulares, patas/soportes) que el usuario puede insertar con **un clic** o **arrastrar directamente a la escena** (*drag-and-drop*), quedando como piezas paramétricas totalmente editables.
-* **Composición jerárquica y subpiezas (RF-05):** Árbol de piezas y grupos con identificadores estables. Permite crear, renombrar, agrupar/desagrupar, eliminar, ocultar/mostrar y bloquear/desbloquear elementos. Soporte para subpiezas estructurales y de acabado (como faldones, travesaños, soportes o frentes de cajón) y **capas de contexto/accesorios (`layer: "accessories"`)** que pueden mostrarse u ocultarse con un clic. Transformar un grupo desplaza y rota todas sus piezas hijas.
+* **Composición jerárquica y subpiezas (RF-05):** Árbol de piezas y grupos con identificadores estables. Permite crear, renombrar, agrupar/desagrupar, duplicar (colocando la copia a un lado del elemento original con sufijo `"copia"`), eliminar, ocultar/mostrar y bloquear/desbloquear elementos. Soporte para subpiezas estructurales y de acabado (como faldones, travesaños, soportes o frentes de cajón) y **capas de contexto/accesorios (`layer: "accessories"`)** que pueden mostrarse u ocultarse con un clic. Transformar un grupo desplaza y rota todas sus piezas hijas.
 * **Manipulación directa, cotas y ficha resumen (RF-07, RF-09):** Selección por clic en escena o árbol, resaltado visual, gizmos de *Mover*, *Rotar* y *Escalar*, cotas dinámicas con líneas de extensión y etiquetas siempre legibles, y una **ficha resumen en pantalla** con las dimensiones clave del proyecto u objeto seleccionado.
 * **Materiales y apariencia (RF-08):** Asignación de colores, materiales predefinidos (ej. madera, metal, acabados de borde/canto) y ajuste sencillo de rugosidad y metalicidad sin alterar dimensiones. Aplicar un material a un grupo lo propaga en lote a todas sus piezas hijas.
 * **Persistencia e historial (RF-10):** Guardado local en IndexedDB (crear, listar, renombrar, eliminar), aviso ante cambios sin guardar, exportación/importación de archivo JSON nativo versionado y *Deshacer / Rehacer* (`Undo / Redo`).
@@ -40,7 +40,7 @@
 * Simulación física, análisis estructural o certificación de resistencia.
 * Planos de fabricación CNC certificados (holguras, vetas, herrajes o despiece industrial en el MVP).
 * Colaboración multiusuario en tiempo real o cuentas en la nube en el MVP.
-* Funcionalidad de duplicar/clonar piezas o grupos y proyectos de ejemplo precargados en el MVP (la aplicación inicia en lienzo vacío).
+* Proyectos de ejemplo precargados en el MVP (la aplicación inicia en lienzo vacío).
 
 ---
 
@@ -52,7 +52,7 @@ Para evitar la saturación habitual de los programas CAD, la pantalla se divide 
 | Zona | Contenido principal | Propósito de usabilidad |
 | :--- | :--- | :--- |
 | **Barra superior** | *Nueva pieza*, *Nuevo grupo*, *Deshacer / Rehacer*, *Guardar / Abrir proyecto*, selector global de unidad (`mm / cm / m`) y botones con estado activo para *Vista inicial*, *Medidas* y *Accesorios*. | Poner las acciones frecuentes a un clic y mantener visible la unidad de medida activa y las capas en todo momento. |
-| **Panel izquierdo (Árbol y Objetos rápidos)** | Pestaña o sección superior de **Objetos rápidos** (atajos visuales) y **Árbol jerárquico** de grupos, subpiezas y accesorios, con iconos para ocultar/mostrar y bloquear/desbloquear. | Permitir añadir piezas comunes al instante y entender de qué partes está compuesto el objeto. |
+| **Panel izquierdo (Árbol y Objetos rápidos)** | Pestaña o sección superior de **Objetos rápidos** (atajos visuales) y **Árbol jerárquico** de grupos, subpiezas y accesorios, con iconos en cada fila para ocultar/mostrar, bloquear/desbloquear, duplicar y eliminar. | Permitir añadir piezas comunes al instante, duplicar elementos existentes y entender de qué partes está compuesto el objeto. |
 | **Área central (Escena 3D + Ficha resumen)** | Lienzo 3D a escala real con suelo y sombras suaves, cuadrícula, cotas exteriores con líneas guía, controles de cámara y una **tarjeta flotante compacta** con el resumen de medidas principales. | Brindar retroalimentación visual inmediata y lectura clara de dimensiones clave sin ruido visual. |
 | **Panel derecho (Propiedades)** | Formulario contextual del elemento seleccionado: nombre, medidas principales, posición/rotación y selector de color o acabado. | Convertir la edición 3D en una ficha clara donde los números y la vista 3D siempre coinciden. |
 
@@ -257,4 +257,4 @@ Para garantizar la independencia respecto al motor gráfico y permitir la evoluc
 * **Stack frontend:** **React + TypeScript + Vite + Zustand + Three.js encapsulado** (motor 3D imperativo desacoplado de React que sincroniza cambios incrementales desde el store y libera recursos WebGL con `dispose()`).
 * **Estilos:** **CSS puro / CSS Modules**, manteniendo la estética limpia y cálida del prototipo de referencia.
 * **Estado inicial:** La aplicación abre en un **lienzo vacío** sin proyecto de ejemplo precargado.
-* **Operaciones de árbol en MVP:** Crear, renombrar, agrupar/desagrupar, ocultar/mostrar, bloquear/desbloquear, asignar a capa `accessories` y **eliminar** (reversible mediante *Deshacer / Rehacer*). La función de **duplicar** queda excluida del MVP.
+* **Operaciones de árbol en MVP:** Crear, renombrar, agrupar/desagrupar, ocultar/mostrar, bloquear/desbloquear, asignar a capa `accessories`, **duplicar** (piezas y grupos con desplazamiento lateral y sufijo `"copia"`) y **eliminar** (ambas reversibles mediante *Deshacer / Rehacer*).

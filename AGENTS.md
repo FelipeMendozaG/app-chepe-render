@@ -2,7 +2,7 @@
 
 Este archivo es la **fuente única de verdad** de instrucciones operativas y arquitectónicas para cualquier agente de IA que trabaje en este repositorio (Antigravity, Claude Code, Codex CLI, Gemini CLI, Cursor, Windsurf, Copilot, Cline, Roo Code, OpenCode, Zed, etc.).
 
-La especificación funcional y UX vigente reside en [`proyecto.md`](./proyecto.md) (v0.6).
+La especificación funcional y UX vigente reside en [`proyecto.md`](./proyecto.md) (v0.7).
 
 ---
 
@@ -20,7 +20,7 @@ La especificación funcional y UX vigente reside en [`proyecto.md`](./proyecto.m
    - **Sin escala arbitraria en primitivas:** el gizmo *Escalar* modifica las dimensiones geométricas reales y restablece `scale` a `[1, 1, 1]` (`cylinder`: uniforme en `XZ` y libre en `Y`; `sphere`: uniforme en `XYZ`; `plane`: solo `X/Z`; `group`: deshabilitado).
    - **Capa de accesorios:** cada entidad/grupo define `layer: "main" | "accessories"`, controlado por `settings.showAccessories`.
    - **Materiales en grupos:** aplicar un material a un grupo lo propaga en lote a sus piezas hijas.
-   - **Alcance estricto MVP:** lienzo vacío al iniciar (sin proyecto de ejemplo precargado); **sin** funcionalidad de *Duplicar* en el MVP (sí incluir *Eliminar* reversible con *Undo*).
+   - **Alcance estricto MVP:** lienzo vacío al iniciar (sin proyecto de ejemplo precargado); incluir *Duplicar* (piezas y grupos, desplazando la copia a un lado del original con sufijo `"copia"`) y *Eliminar*, ambas reversibles con *Undo*.
 
 ---
 

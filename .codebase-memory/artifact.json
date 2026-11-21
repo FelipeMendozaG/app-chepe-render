@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "HEAD",
-    "indexed_at": "2026-11-21T07:16:10Z",
+    "commit": "d5771359937a2314465a1d88354712720b252f3b",
+    "indexed_at": "2026-11-21T15:25:35Z",
     "project": "E-chepita-dev-app-render-chepita",
-    "nodes": 576,
-    "edges": 1800,
-    "original_size": 3997696,
-    "compressed_size": 579805,
-    "compression_level": 9
+    "nodes": 596,
+    "edges": 1877,
+    "original_size": 5373952,
+    "compressed_size": 803754,
+    "compression_level": 3
 }

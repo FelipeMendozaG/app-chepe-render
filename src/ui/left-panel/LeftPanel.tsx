@@ -74,6 +74,7 @@ export function LeftPanel({
   const toggleEntityVisible = useProjectStore((s) => s.toggleEntityVisible);
   const toggleEntityLocked = useProjectStore((s) => s.toggleEntityLocked);
   const ungroupEntity = useProjectStore((s) => s.ungroupEntity);
+  const duplicateEntity = useProjectStore((s) => s.duplicateEntity);
   const deleteEntity = useProjectStore((s) => s.deleteEntity);
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -170,6 +171,15 @@ export function LeftPanel({
                 onClick={() => toggleEntityLocked(entity.id)}
               >
                 {entity.locked ? '🔒' : '🔓'}
+              </button>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                title="Duplicar"
+                aria-label={`Duplicar ${entity.name}`}
+                onClick={() => duplicateEntity(entity.id)}
+              >
+                ⧉
               </button>
               <button
                 type="button"

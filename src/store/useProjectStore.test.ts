@@ -8,13 +8,12 @@ describe('useProjectStore', () => {
     useProjectStore.getState().newEmptyProject();
   });
 
-  it('inicia con lienzo vacío, sin proyecto precargado ni función de duplicar', () => {
+  it('inicia con lienzo vacío y sin proyecto precargado', () => {
     const state = useProjectStore.getState();
     expect(state.document.entities).toHaveLength(0);
     expect(state.selectedId).toBeNull();
     expect(state.isDirty).toBe(false);
     expect(state.document.settings.showAccessories).toBe(true);
-    expect('duplicateEntity' in state).toBe(false);
   });
 
   it('inserta objetos rápidos con nombres correlativos apoyados en Y=0 y los selecciona', () => {
@@ -178,5 +177,61 @@ describe('useProjectStore', () => {
     expect(afterUngroup).toHaveLength(1);
     expect(afterUngroup[0].id).toBe(itemId);
     expect(afterUngroup[0].parentId).toBeNull();
+  });
+
+  it('duplica piezas y grupos al lado del original con sufijo "copia" y soporte atómico de Undo / Redo', () => {
+    const groupId = useProjectStore.getState().addGroup({ name: 'Mesa' });
+    const topId = useProjectStore.getState().addPrimitive({
+      type: 'box',
+      name: 'Cubierta',
+      parentId: groupId,
+      geometry: { width: 1.2, height: 0.02, depth: 0.6 },
+      position: [0, 0.75, 0],
+      materialId: 'mat-oak-natural',
+    })!;
+
+    // Duplicar una primitiva individual
+    const topCopyId = useProjectStore.getState().duplicateEntity(topId);
+    expect(topCopyId).toBeTruthy();
+    expect(useProjectStore.getState().selectedId).toBe(topCopyId);
+
+    const topCopy = useProjectStore
+      .getState()
+      .document.entities.find((e) => e.id === topCopyId) as BoxEntity;
+    expect(topCopy.name).toBe('Cubierta copia');
+    expect(topCopy.parentId).toBe(groupId);
+    expect(topCopy.transform.position[0]).toBeGreaterThan(0);
+    expect(topCopy.transform.position[1]).toBe(0.75);
+    expect(topCopy.materialId).toBe('mat-oak-natural');
+
+    // Undo revierte la duplicación de la primitiva
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().document.entities).toHaveLength(2);
+
+    // Redo la restaura
+    useProjectStore.getState().redo();
+    expect(useProjectStore.getState().document.entities).toHaveLength(3);
+
+    // Duplicar un grupo completo clona sus hijos y cambia toolMode si estaba en scale
+    useProjectStore.getState().selectEntity(topId);
+    useProjectStore.getState().setToolMode('scale');
+    const groupCopyId = useProjectStore.getState().duplicateEntity(groupId);
+    expect(groupCopyId).toBeTruthy();
+    expect(useProjectStore.getState().selectedId).toBe(groupCopyId);
+    expect(useProjectStore.getState().toolMode).toBe('translate');
+
+    const entitiesAfterGroupDup = useProjectStore.getState().document.entities;
+    expect(entitiesAfterGroupDup).toHaveLength(6);
+    const clonedGroup = entitiesAfterGroupDup.find((e) => e.id === groupCopyId)!;
+    expect(clonedGroup.name).toBe('Mesa copia');
+    expect(clonedGroup.transform.position[0]).toBeGreaterThan(0);
+    const clonedChildren = entitiesAfterGroupDup.filter(
+      (e) => e.parentId === groupCopyId,
+    );
+    expect(clonedChildren).toHaveLength(2);
+
+    // Un solo Undo revierte todo el grupo duplicado y sus hijos
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().document.entities).toHaveLength(3);
   });
 });

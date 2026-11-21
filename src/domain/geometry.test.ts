@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DUPLICATE_GAP_METERS,
   aabbToDimensions,
   applyScaleToGeometry,
   canReparent,
+  cloneEntitySubtree,
   findFreePlacementPosition,
   getEntityWorldAABB,
   getLocalBounds,
   getProjectWorldAABB,
 } from './geometry';
+import { generateCopyName } from './presets';
 import type {
   BoxEntity,
   CylinderEntity,
@@ -254,5 +257,107 @@ describe('geometry y pivote Y=0', () => {
     );
     expect(pos[1]).toBe(0);
     expect(pos[0] !== 0 || pos[2] !== 0).toBe(true);
+  });
+
+  it('genera nombres de copia con el sufijo "copia" sin duplicar el sufijo', () => {
+    const first = makeBox('b1', { name: 'Cubierta' });
+    expect(generateCopyName(first.name, [first])).toBe('Cubierta copia');
+
+    const second = makeBox('b2', { name: 'Cubierta copia' });
+    expect(generateCopyName(first.name, [first, second])).toBe('Cubierta copia 2');
+    expect(generateCopyName(second.name, [first, second])).toBe('Cubierta copia 2');
+
+    const third = makeBox('b3', { name: 'Cubierta copia 2' });
+    expect(generateCopyName(second.name, [first, second, third])).toBe('Cubierta copia 3');
+  });
+
+  it('clona una primitiva a un lado (+X) conservando Y, Z, geometría y material', () => {
+    const original = makeBox('b1', {
+      name: 'Tablero 1',
+      locked: true,
+      visible: false,
+      transform: { position: [0.5, 0.73, -0.2], rotation: [0, Math.PI / 4, 0] },
+      geometry: { width: 1.2, height: 0.02, depth: 0.6 },
+      materialId: 'mat-steel',
+    });
+
+    const firstClone = cloneEntitySubtree('b1', [original]);
+    expect(firstClone).not.toBeNull();
+    expect(firstClone!.clonedEntities).toHaveLength(1);
+
+    const copy1 = firstClone!.clonedEntities[0] as BoxEntity;
+    expect(copy1.id).not.toBe(original.id);
+    expect(copy1.name).toBe('Tablero 1 copia');
+    expect(copy1.locked).toBe(false);
+    expect(copy1.visible).toBe(true);
+    expect(copy1.materialId).toBe('mat-steel');
+    expect(copy1.geometry).toEqual(original.geometry);
+    expect(copy1.transform.rotation).toEqual(original.transform.rotation);
+    expect(copy1.transform.position[1]).toBe(original.transform.position[1]);
+    expect(copy1.transform.position[2]).toBe(original.transform.position[2]);
+    expect(copy1.transform.position[0]).toBeGreaterThan(original.transform.position[0]);
+
+    // Duplicar de nuevo el original evita superponer sobre la primera copia
+    const secondClone = cloneEntitySubtree('b1', [original, copy1]);
+    const copy2 = secondClone!.clonedEntities[0] as BoxEntity;
+    expect(copy2.name).toBe('Tablero 1 copia 2');
+    expect(copy2.transform.position[0]).toBeGreaterThan(copy1.transform.position[0]);
+  });
+
+  it('clona un grupo completo con subgrupos e hijos remapeando parentId y desplazando el conjunto al lado', () => {
+    const group: GroupEntity = {
+      id: 'g1',
+      type: 'group',
+      name: 'Escritorio',
+      parentId: null,
+      layer: 'main',
+      visible: true,
+      locked: false,
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0] },
+    };
+    const subGroup: GroupEntity = {
+      id: 'g2',
+      type: 'group',
+      name: 'Cajonero',
+      parentId: 'g1',
+      layer: 'main',
+      visible: true,
+      locked: false,
+      transform: { position: [0.4, 0, 0], rotation: [0, 0, 0] },
+    };
+    const top = makeBox('top', {
+      name: 'Cubierta',
+      parentId: 'g1',
+      transform: { position: [0, 0.73, 0], rotation: [0, 0, 0] },
+      geometry: { width: 1.8, height: 0.02, depth: 0.6 },
+    });
+    const drawer = makeBox('drawer', {
+      name: 'Cajón',
+      parentId: 'g2',
+      transform: { position: [0, 0.1, 0], rotation: [0, 0, 0] },
+      geometry: { width: 0.4, height: 0.2, depth: 0.5 },
+    });
+
+    const result = cloneEntitySubtree('g1', [group, subGroup, top, drawer]);
+    expect(result).not.toBeNull();
+    expect(result!.clonedEntities).toHaveLength(4);
+
+    const clonedGroup = result!.clonedEntities.find((e) => e.id === result!.rootId)!;
+    const clonedSub = result!.clonedEntities.find((e) => e.name === 'Cajonero')!;
+    const clonedTop = result!.clonedEntities.find((e) => e.name === 'Cubierta')!;
+    const clonedDrawer = result!.clonedEntities.find((e) => e.name === 'Cajón')!;
+
+    expect(clonedGroup.name).toBe('Escritorio copia');
+    expect(clonedGroup.parentId).toBeNull();
+    expect(clonedGroup.transform.position[0]).toBeCloseTo(1.8 + DUPLICATE_GAP_METERS, 4);
+    expect(clonedGroup.transform.position[1]).toBe(0);
+    expect(clonedGroup.transform.position[2]).toBe(0);
+
+    // Jerarquía interna remapeada y nombres/posiciones locales de hijos preservados
+    expect(clonedSub.parentId).toBe(clonedGroup.id);
+    expect(clonedTop.parentId).toBe(clonedGroup.id);
+    expect(clonedDrawer.parentId).toBe(clonedSub.id);
+    expect(clonedTop.transform.position).toEqual([0, 0.73, 0]);
+    expect(clonedDrawer.transform.position).toEqual([0, 0.1, 0]);
   });
 });

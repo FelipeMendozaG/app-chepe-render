@@ -6,6 +6,7 @@ import {
   applyScaleToGeometry,
   buildEntityMap,
   canReparent,
+  cloneEntitySubtree,
   createEmptyProjectDocument,
   findFreePlacementPosition,
   generateCorrelativeName,
@@ -118,7 +119,7 @@ export interface ProjectStoreState {
   loadProjectDocument: (doc: ProjectDocument, options?: { markDirty?: boolean }) => void;
   markSaved: () => void;
 
-  // Entities & hierarchy (strict MVP: no duplicate)
+  // Entities & hierarchy
   addPrimitive: (input: AddPrimitiveInput) => string | null;
   addQuickObject: (
     presetId: string,
@@ -146,6 +147,7 @@ export interface ProjectStoreState {
   setEntityLayer: (id: string, layer: EntityLayer) => void;
   reparentEntity: (id: string, newParentId: string | null) => boolean;
   ungroupEntity: (groupId: string) => boolean;
+  duplicateEntity: (id: string) => string | null;
   deleteEntity: (id: string) => boolean;
 
   // Materials
@@ -877,6 +879,21 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         { keepSelectionIfValid: true },
       );
       return true;
+    },
+
+    duplicateEntity: (id) => {
+      const state = get();
+      const cloned = cloneEntitySubtree(id, state.document.entities);
+      if (!cloned) return null;
+
+      applyDocumentChange(
+        (current) => ({
+          ...current,
+          entities: [...current.entities, ...cloned.clonedEntities],
+        }),
+        { selectedId: cloned.rootId },
+      );
+      return cloned.rootId;
     },
 
     deleteEntity: (id) => {

@@ -1,3 +1,4 @@
+import { generateCopyName, generateId } from './presets';
 import { roundClean } from './units';
 import {
   isGroupEntity,
@@ -515,4 +516,212 @@ export function findFreePlacementPosition(
   }
 
   return [0, 0, 0];
+}
+
+export const DUPLICATE_GAP_METERS = 0.08;
+const EMPTY_GROUP_DUPLICATE_STEP_METERS = 0.2;
+
+function aabbsOverlap3D(a: AABB, b: AABB, tolerance = 0.005): boolean {
+  return (
+    a.min[0] < b.max[0] - tolerance &&
+    a.max[0] > b.min[0] + tolerance &&
+    a.min[1] < b.max[1] - tolerance &&
+    a.max[1] > b.min[1] + tolerance &&
+    a.min[2] < b.max[2] - tolerance &&
+    a.max[2] > b.min[2] + tolerance
+  );
+}
+
+function getEntitySubtreeAABBInParentSpace(
+  entityId: string,
+  entities: readonly Entity[],
+  entitiesById: Map<string, Entity>,
+): AABB | null {
+  const root = entitiesById.get(entityId);
+  if (!root) return null;
+
+  const getRelativeMatrix = (targetId: string): Mat4 => {
+    const chain: Entity[] = [];
+    const visited = new Set<string>();
+    let current = entitiesById.get(targetId);
+
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      chain.push(current);
+      if (current.id === entityId) break;
+      current = current.parentId ? entitiesById.get(current.parentId) : undefined;
+    }
+
+    let mat = IDENTITY_MAT4;
+    for (let i = chain.length - 1; i >= 0; i--) {
+      mat = multiplyMat4(mat, composeTransformMatrix(chain[i].transform));
+    }
+    return mat;
+  };
+
+  if (isPrimitiveEntity(root)) {
+    return transformAABB(getLocalBounds(root), getRelativeMatrix(root.id));
+  }
+
+  const descendants = getDescendantPrimitives(root.id, entities);
+  const childAABBs = descendants.map((child) =>
+    transformAABB(getLocalBounds(child), getRelativeMatrix(child.id)),
+  );
+  return unionAABBs(childAABBs);
+}
+
+export interface ClonedSubtreeResult {
+  rootId: string;
+  clonedEntities: Entity[];
+}
+
+/**
+ * Clones a primitive or group (with all nested descendants), remapping IDs and
+ * parentId links, naming the root with the "copia" suffix, and offsetting the
+ * root to the side (+X) of the original without overlapping existing siblings.
+ */
+export function cloneEntitySubtree(
+  entityId: string,
+  entities: readonly Entity[],
+): ClonedSubtreeResult | null {
+  const entitiesById = buildEntityMap(entities);
+  const root = entitiesById.get(entityId);
+  if (!root) return null;
+
+  const subtreeIds = new Set<string>([entityId]);
+  if (isGroupEntity(root)) {
+    for (const descId of getDescendantIds(entityId, entities)) {
+      subtreeIds.add(descId);
+    }
+  }
+
+  // Preserve original ordering from the flat entities list
+  const sourceSubtree = entities.filter((e) => subtreeIds.has(e.id));
+
+  // Build oldId -> newId map
+  const idMap = new Map<string, string>();
+  for (const item of sourceSubtree) {
+    idMap.set(item.id, generateId(isGroupEntity(item) ? 'grp' : 'ent'));
+  }
+
+  // Compute side offset along +X in parent's coordinate space
+  const parentSpaceAABB = getEntitySubtreeAABBInParentSpace(
+    entityId,
+    entities,
+    entitiesById,
+  );
+  const spanX = parentSpaceAABB
+    ? Math.max(0, parentSpaceAABB.max[0] - parentSpaceAABB.min[0])
+    : 0;
+  const stepX =
+    spanX > 0
+      ? roundClean(spanX + DUPLICATE_GAP_METERS, 6)
+      : EMPTY_GROUP_DUPLICATE_STEP_METERS;
+
+  let offsetX = stepX;
+  const sourceWorldAABB = getEntityWorldAABB(entityId, entities, {
+    includeHidden: true,
+    showAccessories: true,
+  });
+
+  if (sourceWorldAABB) {
+    // Collect existing primitive world AABBs to avoid stacking repeated copies
+    const existingAABBs: AABB[] = [];
+    for (const entity of entities) {
+      if (!isPrimitiveEntity(entity)) continue;
+      const worldMatrix = getWorldMatrix(entity.id, entitiesById);
+      existingAABBs.push(transformAABB(getLocalBounds(entity), worldMatrix));
+    }
+
+    // Compute world-space direction of parent's local +X axis
+    const parentWorldMat = root.parentId
+      ? getWorldMatrix(root.parentId, entitiesById)
+      : IDENTITY_MAT4;
+    const worldAxisX: Vec3 = [
+      parentWorldMat[0],
+      parentWorldMat[4],
+      parentWorldMat[8],
+    ];
+
+    for (let attempt = 1; attempt <= 20; attempt++) {
+      const candidateOffset = roundClean(stepX * attempt, 6);
+      const dx = worldAxisX[0] * candidateOffset;
+      const dy = worldAxisX[1] * candidateOffset;
+      const dz = worldAxisX[2] * candidateOffset;
+      const candidateAABB: AABB = {
+        min: [
+          sourceWorldAABB.min[0] + dx,
+          sourceWorldAABB.min[1] + dy,
+          sourceWorldAABB.min[2] + dz,
+        ],
+        max: [
+          sourceWorldAABB.max[0] + dx,
+          sourceWorldAABB.max[1] + dy,
+          sourceWorldAABB.max[2] + dz,
+        ],
+      };
+
+      const collides = existingAABBs.some((other) =>
+        aabbsOverlap3D(candidateAABB, other),
+      );
+      if (!collides) {
+        offsetX = candidateOffset;
+        break;
+      }
+      offsetX = candidateOffset;
+    }
+  }
+
+  const rootCopyName = generateCopyName(root.name, entities);
+  const clonedEntities: Entity[] = sourceSubtree.map((item) => {
+    const newId = idMap.get(item.id)!;
+    const isRoot = item.id === entityId;
+    const newParentId = isRoot
+      ? item.parentId
+      : item.parentId
+        ? (idMap.get(item.parentId) ?? item.parentId)
+        : null;
+
+    const position: Vec3 = isRoot
+      ? [
+          roundClean(item.transform.position[0] + offsetX, 6),
+          item.transform.position[1],
+          item.transform.position[2],
+        ]
+      : [...item.transform.position];
+
+    const transform: Transform = {
+      position,
+      rotation: [...item.transform.rotation],
+    };
+
+    const base = {
+      id: newId,
+      name: isRoot ? rootCopyName : item.name,
+      parentId: newParentId,
+      layer: item.layer,
+      visible: isRoot ? true : item.visible,
+      locked: isRoot ? false : item.locked,
+      transform,
+    };
+
+    if (isGroupEntity(item)) {
+      return {
+        ...base,
+        type: 'group',
+      };
+    }
+
+    return {
+      ...base,
+      type: item.type,
+      materialId: item.materialId,
+      geometry: { ...item.geometry },
+    } as PrimitiveEntity;
+  });
+
+  return {
+    rootId: idMap.get(entityId)!,
+    clonedEntities,
+  };
 }
