@@ -19,6 +19,7 @@ import {
   unitToMeters,
   validateEntityName,
   validateGeometry,
+  validateProjectName,
   type Entity,
   type EntityLayer,
   type MaterialDef,
@@ -62,9 +63,17 @@ export function RightPanel() {
   );
 
   const [useRadius, setUseRadius] = useState(false);
+  const [projectNameDraft, setProjectNameDraft] = useState(project.name);
+  const [projectNameError, setProjectNameError] = useState<string | null>(null);
+  const projectNameErrorId = useId();
   const [nameDraft, setNameDraft] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const nameErrorId = useId();
+
+  useEffect(() => {
+    setProjectNameDraft(project.name);
+    setProjectNameError(null);
+  }, [project.id, project.name]);
 
   useEffect(() => {
     setNameDraft(selectedEntity?.name ?? '');
@@ -145,6 +154,18 @@ export function RightPanel() {
     return materials.filter((m) => presetIds.has(m.id));
   }, [materials]);
 
+  const handleCommitProjectName = () => {
+    const issue = validateProjectName(projectNameDraft);
+    if (issue) {
+      setProjectNameError(issue.message);
+      return;
+    }
+    setProjectNameError(null);
+    const trimmed = projectNameDraft.trim();
+    setProjectNameDraft(trimmed);
+    updateProjectMeta({ name: trimmed });
+  };
+
   // Empty selection: show project info & visual preferences
   if (!selectedEntity) {
     return (
@@ -163,9 +184,24 @@ export function RightPanel() {
               <span>Nombre del proyecto</span>
               <input
                 type="text"
-                value={project.name}
-                onChange={(e) => updateProjectMeta({ name: e.target.value })}
+                value={projectNameDraft}
+                aria-invalid={projectNameError ? 'true' : 'false'}
+                aria-describedby={projectNameError ? projectNameErrorId : undefined}
+                className={projectNameError ? styles.inputInvalid : ''}
+                onChange={(e) => {
+                  setProjectNameDraft(e.target.value);
+                  if (projectNameError) setProjectNameError(null);
+                }}
+                onBlur={handleCommitProjectName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
               />
+              {projectNameError && (
+                <span id={projectNameErrorId} className={styles.errorText}>
+                  {projectNameError}
+                </span>
+              )}
             </label>
             <label className={styles.textField}>
               <span>Descripción</span>
