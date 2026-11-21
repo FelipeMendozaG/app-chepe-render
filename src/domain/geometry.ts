@@ -464,14 +464,12 @@ function aabbsOverlapXZ(a: AABB, b: AABB, margin: number): boolean {
 }
 
 /**
- * Finds a free floor placement (Y = 0) near the origin for 1-click quick object insertion.
+ * Finds a free floor placement (Y = 0) near the origin for a local AABB.
  */
-export function findFreePlacementPosition(
-  type: PrimitiveType,
-  geometry: GeometryParams,
+export function findFreePlacementPositionForBounds(
+  local: AABB,
   entities: readonly Entity[],
 ): Vec3 {
-  const local = getLocalBoundsForGeometry(type, geometry);
   const existingAABBs: AABB[] = [];
   const entitiesById = buildEntityMap(entities);
 
@@ -516,6 +514,18 @@ export function findFreePlacementPosition(
   }
 
   return [0, 0, 0];
+}
+
+/**
+ * Finds a free floor placement (Y = 0) near the origin for 1-click quick object insertion.
+ */
+export function findFreePlacementPosition(
+  type: PrimitiveType,
+  geometry: GeometryParams,
+  entities: readonly Entity[],
+): Vec3 {
+  const local = getLocalBoundsForGeometry(type, geometry);
+  return findFreePlacementPositionForBounds(local, entities);
 }
 
 export const DUPLICATE_GAP_METERS = 0.08;

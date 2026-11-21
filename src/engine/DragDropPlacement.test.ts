@@ -75,4 +75,35 @@ describe('DragDropPlacement', () => {
     (tableMesh.material as THREE.Material).dispose();
     placement.dispose();
   });
+
+  it('genera previsualización fantasma multi-pieza para accesorios compuestos como Laptop', () => {
+    const scene = new THREE.Scene();
+    const placement = new DragDropPlacement(scene);
+    const camera = new THREE.PerspectiveCamera(45, 800 / 600, 0.1, 100);
+    camera.position.set(0, 3, 3);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+
+    const pos = placement.updatePreview(
+      'quick-laptop',
+      400,
+      300,
+      createMockElement(),
+      camera,
+      [],
+    );
+
+    expect(pos).not.toBeNull();
+    expect(pos![1]).toBe(0);
+    const ghostRoot = scene.getObjectByName('DragDropGhost');
+    expect(ghostRoot?.visible).toBe(true);
+
+    let meshCount = 0;
+    ghostRoot?.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) meshCount += 1;
+    });
+    expect(meshCount).toBe(3);
+
+    placement.dispose();
+  });
 });

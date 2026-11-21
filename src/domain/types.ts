@@ -147,10 +147,20 @@ export interface ValidationIssue {
   message: string;
 }
 
-export type QuickObjectCategory = 'boards' | 'bars' | 'shapes';
+export type QuickObjectCategory = 'boards' | 'bars' | 'shapes' | 'accessories';
 
-export interface QuickObjectPreset {
+export interface CompositePresetPart {
+  name: string;
+  type: PrimitiveType;
+  geometry: GeometryParams;
+  materialId: string;
+  position: Vec3;
+  rotation?: Vec3;
+}
+
+export interface PrimitiveQuickObjectPreset {
   id: string;
+  kind?: 'primitive';
   category: QuickObjectCategory;
   categoryLabel: string;
   label: string;
@@ -158,7 +168,32 @@ export interface QuickObjectPreset {
   type: PrimitiveType;
   geometry: GeometryParams;
   defaultMaterialId: string;
+  defaultLayer?: EntityLayer;
   summaryHint: string;
+}
+
+export interface CompositeQuickObjectPreset {
+  id: string;
+  kind: 'composite';
+  category: QuickObjectCategory;
+  categoryLabel: string;
+  label: string;
+  defaultNamePrefix: string;
+  type: 'group';
+  defaultLayer: EntityLayer;
+  bounds: Dimensions3D;
+  parts: readonly CompositePresetPart[];
+  summaryHint: string;
+}
+
+export type QuickObjectPreset =
+  | PrimitiveQuickObjectPreset
+  | CompositeQuickObjectPreset;
+
+export function isCompositeQuickObjectPreset(
+  preset: QuickObjectPreset,
+): preset is CompositeQuickObjectPreset {
+  return preset.kind === 'composite';
 }
 
 export type TransformToolMode = 'translate' | 'rotate' | 'scale';

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { isPrimitiveEntity, type BoxEntity } from '../domain';
+import {
+  QUICK_OBJECT_PRESETS,
+  analyzeGroupGeometryWarnings,
+  isCompositeQuickObjectPreset,
+  isGroupEntity,
+  isPrimitiveEntity,
+  type BoxEntity,
+} from '../domain';
 import { canRedo, canUndo } from './history';
 import { useProjectStore } from './useProjectStore';
 
@@ -233,5 +240,42 @@ describe('useProjectStore', () => {
     // Un solo Undo revierte todo el grupo duplicado y sus hijos
     useProjectStore.getState().undo();
     expect(useProjectStore.getState().document.entities).toHaveLength(3);
+  });
+
+  it('inserta objetos compuestos predefinidos en capa accessories sin advertencias AABB y con Undo atómico', () => {
+    const compositePresets = QUICK_OBJECT_PRESETS.filter(
+      isCompositeQuickObjectPreset,
+    );
+    expect(compositePresets.length).toBeGreaterThanOrEqual(6);
+
+    for (const preset of compositePresets) {
+      useProjectStore.getState().newEmptyProject();
+      const groupId = useProjectStore.getState().addQuickObject(preset.id);
+      expect(groupId).toBeTruthy();
+
+      const state = useProjectStore.getState();
+      expect(state.selectedId).toBe(groupId);
+      const group = state.document.entities.find((e) => e.id === groupId)!;
+      expect(isGroupEntity(group)).toBe(true);
+      expect(group.layer).toBe('accessories');
+      expect(group.transform.position[1]).toBe(0);
+
+      const children = state.document.entities.filter(
+        (e) => e.parentId === groupId,
+      );
+      expect(children).toHaveLength(preset.parts.length);
+      expect(children.every((c) => c.layer === 'accessories')).toBe(true);
+
+      // Las subpiezas deben encajar limpiamente sin falsas advertencias de solape ni flotación
+      const warnings = analyzeGroupGeometryWarnings(
+        groupId!,
+        state.document.entities,
+      );
+      expect(warnings).toHaveLength(0);
+
+      // Un solo Undo revierte el grupo completo y todas sus subpiezas
+      useProjectStore.getState().undo();
+      expect(useProjectStore.getState().document.entities).toHaveLength(0);
+    }
   });
 });

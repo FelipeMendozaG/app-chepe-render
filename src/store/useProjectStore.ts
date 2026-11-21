@@ -9,6 +9,7 @@ import {
   cloneEntitySubtree,
   createEmptyProjectDocument,
   findFreePlacementPosition,
+  findFreePlacementPositionForBounds,
   generateCorrelativeName,
   generateId,
   getDefaultGeometryForPrimitive,
@@ -16,6 +17,7 @@ import {
   getDescendantPrimitives,
   getQuickObjectPreset,
   hasBlockingErrors,
+  isCompositeQuickObjectPreset,
   isEntityEffectivelyLocked,
   isGroupEntity,
   isPrimitiveEntity,
@@ -606,10 +608,72 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
       if (!preset) return null;
 
       const state = get();
+      const doc = state.document;
       const name = generateCorrelativeName(
         preset.defaultNamePrefix,
-        state.document.entities,
+        doc.entities,
       );
+
+      if (isCompositeQuickObjectPreset(preset)) {
+        const parentId =
+          options?.parentId &&
+          doc.entities.some(
+            (e) => e.id === options.parentId && isGroupEntity(e),
+          )
+            ? options.parentId
+            : null;
+        const layer: EntityLayer = options?.layer ?? preset.defaultLayer;
+        const hw = preset.bounds.width / 2;
+        const hd = preset.bounds.depth / 2;
+        const position: Vec3 =
+          options?.position ??
+          findFreePlacementPositionForBounds(
+            {
+              min: [-hw, 0, -hd],
+              max: [hw, preset.bounds.height, hd],
+            },
+            doc.entities,
+          );
+
+        const groupId = generateId('grp');
+        const group: GroupEntity = {
+          id: groupId,
+          type: 'group',
+          name,
+          parentId,
+          layer,
+          visible: true,
+          locked: false,
+          transform: {
+            position: [...position] as Vec3,
+            rotation: [0, 0, 0],
+          },
+        };
+
+        const childEntities: PrimitiveEntity[] = preset.parts.map((part) =>
+          buildPrimitiveEntity(
+            generateId('ent'),
+            part.name,
+            groupId,
+            layer,
+            resolveMaterialId(doc, part.materialId),
+            part.position,
+            part.rotation ?? [0, 0, 0],
+            part.type,
+            structuredClone(part.geometry),
+          ),
+        );
+
+        applyDocumentChange(
+          (current) => ({
+            ...current,
+            entities: [...current.entities, group, ...childEntities],
+          }),
+          { selectedId: groupId },
+        );
+
+        return groupId;
+      }
 
       return get().addPrimitive({
         type: preset.type,
@@ -618,7 +682,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         materialId: preset.defaultMaterialId,
         position: options?.position,
         parentId: options?.parentId ?? null,
-        layer: options?.layer,
+        layer: options?.layer ?? preset.defaultLayer,
       });
     },
 

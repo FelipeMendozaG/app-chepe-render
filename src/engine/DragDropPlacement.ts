@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import {
   getQuickObjectPreset,
+  isCompositeQuickObjectPreset,
   roundClean,
+  type GeometryParams,
+  type PrimitiveType,
   type QuickObjectPreset,
   type Vec3,
 } from '../domain';
@@ -10,14 +13,17 @@ const FLOOR_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const MAX_FLOOR_EXTENT = 12;
 const TOP_SURFACE_NORMAL_Y_THRESHOLD = 0.9;
 
-function buildGhostGeometry(preset: QuickObjectPreset): {
+function buildPrimitiveGhostGeometry(
+  type: PrimitiveType,
+  geometry: GeometryParams,
+): {
   geometry: THREE.BufferGeometry;
   offsetY: number;
   rotationX: number;
 } {
-  switch (preset.type) {
+  switch (type) {
     case 'box': {
-      const g = preset.geometry as { width: number; height: number; depth: number };
+      const g = geometry as { width: number; height: number; depth: number };
       return {
         geometry: new THREE.BoxGeometry(g.width, g.height, g.depth),
         offsetY: g.height / 2,
@@ -25,7 +31,7 @@ function buildGhostGeometry(preset: QuickObjectPreset): {
       };
     }
     case 'cylinder': {
-      const g = preset.geometry as {
+      const g = geometry as {
         radius: number;
         height: number;
         radialSegments?: number;
@@ -42,7 +48,7 @@ function buildGhostGeometry(preset: QuickObjectPreset): {
       };
     }
     case 'sphere': {
-      const g = preset.geometry as {
+      const g = geometry as {
         radius: number;
         widthSegments?: number;
         heightSegments?: number;
@@ -58,7 +64,7 @@ function buildGhostGeometry(preset: QuickObjectPreset): {
       };
     }
     case 'plane': {
-      const g = preset.geometry as { width: number; depth: number };
+      const g = geometry as { width: number; depth: number };
       return {
         geometry: new THREE.PlaneGeometry(g.width, g.depth),
         offsetY: 0.002,
@@ -66,6 +72,45 @@ function buildGhostGeometry(preset: QuickObjectPreset): {
       };
     }
   }
+}
+
+function buildGhostContent(
+  preset: QuickObjectPreset,
+  material: THREE.Material,
+): { container: THREE.Group; geometries: THREE.BufferGeometry[] } {
+  const container = new THREE.Group();
+  const geometries: THREE.BufferGeometry[] = [];
+
+  if (isCompositeQuickObjectPreset(preset)) {
+    for (const part of preset.parts) {
+      const built = buildPrimitiveGhostGeometry(part.type, part.geometry);
+      geometries.push(built.geometry);
+
+      const partGroup = new THREE.Group();
+      partGroup.rotation.order = 'XYZ';
+      partGroup.position.set(part.position[0], part.position[1], part.position[2]);
+      if (part.rotation) {
+        partGroup.rotation.set(part.rotation[0], part.rotation[1], part.rotation[2]);
+      }
+
+      const mesh = new THREE.Mesh(built.geometry, material);
+      mesh.position.set(0, built.offsetY, 0);
+      mesh.rotation.set(built.rotationX, 0, 0);
+      mesh.renderOrder = 15;
+      partGroup.add(mesh);
+      container.add(partGroup);
+    }
+    return { container, geometries };
+  }
+
+  const built = buildPrimitiveGhostGeometry(preset.type, preset.geometry);
+  geometries.push(built.geometry);
+  const mesh = new THREE.Mesh(built.geometry, material);
+  mesh.position.set(0, built.offsetY, 0);
+  mesh.rotation.set(built.rotationX, 0, 0);
+  mesh.renderOrder = 15;
+  container.add(mesh);
+  return { container, geometries };
 }
 
 export class DragDropPlacement {
@@ -77,7 +122,8 @@ export class DragDropPlacement {
   private readonly worldNormal = new THREE.Vector3();
   private readonly floorHit = new THREE.Vector3();
 
-  private ghostMesh: THREE.Mesh | null = null;
+  private ghostContent: THREE.Group | null = null;
+  private ghostGeometries: THREE.BufferGeometry[] = [];
   private activePresetId: string | null = null;
 
   constructor(scene: THREE.Scene) {
@@ -180,15 +226,12 @@ export class DragDropPlacement {
       return null;
     }
 
-    if (this.activePresetId !== presetId || !this.ghostMesh) {
+    if (this.activePresetId !== presetId || !this.ghostContent) {
       this.disposeGhostMesh();
-      const built = buildGhostGeometry(preset);
-      const mesh = new THREE.Mesh(built.geometry, this.ghostMaterial);
-      mesh.position.set(0, built.offsetY, 0);
-      mesh.rotation.set(built.rotationX, 0, 0);
-      mesh.renderOrder = 15;
-      this.ghostRoot.add(mesh);
-      this.ghostMesh = mesh;
+      const built = buildGhostContent(preset, this.ghostMaterial);
+      this.ghostRoot.add(built.container);
+      this.ghostContent = built.container;
+      this.ghostGeometries = built.geometries;
       this.activePresetId = presetId;
     }
 
@@ -221,10 +264,14 @@ export class DragDropPlacement {
   }
 
   private disposeGhostMesh(): void {
-    if (!this.ghostMesh) return;
-    this.ghostMesh.removeFromParent();
-    this.ghostMesh.geometry.dispose();
-    this.ghostMesh = null;
+    if (this.ghostContent) {
+      this.ghostContent.removeFromParent();
+      this.ghostContent = null;
+    }
+    for (const geometry of this.ghostGeometries) {
+      geometry.dispose();
+    }
+    this.ghostGeometries = [];
     this.activePresetId = null;
   }
 

@@ -69,6 +69,14 @@ Permite a los usuarios sin experiencia empezar a construir sin tener que calcula
 | **Barras y soportes** | Pata / Soporte estándar | `cylinder` | `Ø 5 cm` diámetro × `75 cm` alto |
 | **Formas base** | Esfera | `sphere` | `20 cm` diámetro |
 | **Formas base** | Superficie / Plano | `plane` | `100 × 100 cm` |
+| **Accesorios y contexto** | Laptop | `group` (compuesto) | `32 × 22 × 23 cm` (capa `accessories`) |
+| **Accesorios y contexto** | Monitor | `group` (compuesto) | `54 × 42 × 18 cm` (capa `accessories`) |
+| **Accesorios y contexto** | PC de escritorio | `group` (compuesto) | `21 × 45 × 44 cm` (capa `accessories`) |
+| **Accesorios y contexto** | Maceta con planta | `group` (compuesto) | `18 × 33 × 18 cm` (capa `accessories`) |
+| **Accesorios y contexto** | Lámpara de escritorio | `group` (compuesto) | `16 × 38 × 22 cm` (capa `accessories`) |
+| **Accesorios y contexto** | Taza | `group` (compuesto) | `11 × 10 × 9 cm` (capa `accessories`) |
+| **Accesorios y contexto** | Teclado y mouse | `group` (compuesto) | `54 × 3 × 13 cm` (capa `accessories`) |
+| **Accesorios y contexto** | Libros apilados | `group` (compuesto) | `24 × 10 × 17 cm` (capa `accessories`) |
 
 **Comportamiento de los objetos rápidos:**
 * **Inserción en 1 clic:** Crea la pieza apoyada en el suelo (`Y = 0`) cerca del centro libre de la escena, le asigna un nombre correlativo claro (ej. *Tablero 1*, *Barra 2*), la selecciona y abre su formulario de propiedades.

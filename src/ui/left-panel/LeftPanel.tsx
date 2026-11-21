@@ -2,6 +2,7 @@ import { useMemo, useState, type DragEvent } from 'react';
 import {
   QUICK_OBJECT_PRESETS,
   formatLengthValue,
+  isCompositeQuickObjectPreset,
   isGroupEntity,
   type DisplayUnit,
   type Entity,
@@ -22,9 +23,14 @@ const CATEGORY_ORDER: Array<{ id: QuickObjectCategory; label: string }> = [
   { id: 'boards', label: 'Tableros y cajas' },
   { id: 'bars', label: 'Barras y soportes' },
   { id: 'shapes', label: 'Formas base' },
+  { id: 'accessories', label: 'Accesorios y contexto' },
 ];
 
 function formatPresetSummary(preset: QuickObjectPreset, unit: DisplayUnit): string {
+  if (isCompositeQuickObjectPreset(preset)) {
+    const { width, height, depth } = preset.bounds;
+    return `${formatLengthValue(width, unit)} × ${formatLengthValue(height, unit)} × ${formatLengthValue(depth, unit)} ${unit}`;
+  }
   switch (preset.type) {
     case 'box': {
       const g = preset.geometry as { width: number; height: number; depth: number };
