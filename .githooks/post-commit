@@ -1,0 +1,12 @@
+#!/bin/sh
+# Reindexa el proyecto en codebase-memory tras cada commit
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if command -v node >/dev/null 2>&1; then
+  node "$REPO_ROOT/scripts/reindex-codebase.mjs" || true
+elif command -v codebase-memory-mcp >/dev/null 2>&1; then
+  codebase-memory-mcp cli --quiet index_repository "{\"repo_path\":\"$REPO_ROOT\",\"mode\":\"full\",\"persistence\":true}" || true
+else
+  echo "[codebase-memory] Ni node ni codebase-memory-mcp están disponibles en PATH."
+fi

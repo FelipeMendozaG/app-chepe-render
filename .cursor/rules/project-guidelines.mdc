@@ -1,0 +1,11 @@
+---
+description: Reglas de arquitectura, UX y reindexación de codebase-memory para APP-RENDER-CHEPITA
+alwaysApply: true
+---
+
+Sigue estrictamente las directrices de `AGENTS.md` y la especificación en `proyecto.md`.
+
+- Stack: React + TypeScript + Vite + Zustand + Three.js encapsulado + CSS Modules (sin Tailwind).
+- Dominio (`src/domain/`) independiente de React/Three.js, pivote en `Y = 0`, sin escala arbitraria, `layer: "main" | "accessories"`, inicio en lienzo vacío y sin *Duplicar* en el MVP.
+- Prioriza las herramientas MCP de `codebase-memory` (`.cursor/mcp.json`) para explorar el código.
+- **Regla obligatoria post-commit:** Cada vez que se realice un `git commit`, el proyecto debe reindexarse en `codebase-memory` con `persistence: true` (automáticamente vía `.githooks/post-commit`, o manualmente vía `npm run reindex` / herramienta MCP `index_repository`).

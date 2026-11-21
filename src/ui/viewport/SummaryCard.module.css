@@ -1,0 +1,59 @@
+.card {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 2;
+  max-width: 290px;
+  min-width: 210px;
+  padding: 13px 15px;
+  background: var(--surface-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.specItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.specLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.specValue {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}

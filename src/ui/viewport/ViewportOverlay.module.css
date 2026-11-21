@@ -1,0 +1,59 @@
+.rightControls {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.pillGroup {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ctrlBtn {
+  border: 1px solid var(--border-control);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.ctrlBtn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.ctrlBtnActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+}
+
+.ctrlBtnActive:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.hint {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+}

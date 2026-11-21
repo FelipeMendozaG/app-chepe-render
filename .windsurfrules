@@ -1,0 +1,8 @@
+# Windsurf Rules — APP-RENDER-CHEPITA
+
+Sigue todas las directrices definidas en `AGENTS.md` y `proyecto.md`.
+
+- Stack: React + TypeScript + Vite + Zustand + Three.js encapsulado + CSS Modules (sin Tailwind).
+- Mantén `src/domain/` 100% libre de React y Three.js, pivote de primitivas en base inferior (`Y = 0`), sin escala arbitraria, lienzo vacío al iniciar y sin función de *Duplicar* en el MVP.
+- Prioriza `codebase-memory` (MCP) con enfoque *graph-first* al explorar el código.
+- Regla obligatoria: tras cada `git commit`, asegúrate de reindexar el proyecto en `codebase-memory` (`persistence: true`) vía `.githooks/post-commit`, `npm run reindex` o la herramienta MCP `index_repository`.

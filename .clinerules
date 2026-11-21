@@ -1,0 +1,8 @@
+# Cline / Roo Code Rules — APP-RENDER-CHEPITA
+
+Sigue todas las directrices definidas en `AGENTS.md` y `proyecto.md`.
+
+- Stack: React + TypeScript + Vite + Zustand + Three.js encapsulado + CSS Modules (sin Tailwind).
+- Mantén `src/domain/` 100% desacoplado de React y Three.js, pivote en base inferior (`Y = 0`), sin escala arbitraria, lienzo vacío al iniciar y sin *Duplicar* en el MVP.
+- Usa `codebase-memory` (`.mcp.json`) con enfoque *graph-first*.
+- Regla obligatoria: cada vez que se ejecute un `git commit`, reindexa el proyecto en `codebase-memory` (`persistence: true`) mediante `.githooks/post-commit`, `npm run reindex` o la herramienta MCP `index_repository`.
