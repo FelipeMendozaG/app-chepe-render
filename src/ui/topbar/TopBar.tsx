@@ -5,11 +5,18 @@ import styles from './TopBar.module.css';
 interface TopBarProps {
   onOpenNewPiece: () => void;
   onOpenProjects: () => void;
+  aiOpen: boolean;
+  onToggleAi: () => void;
 }
 
 const UNITS: DisplayUnit[] = ['mm', 'cm', 'm'];
 
-export function TopBar({ onOpenNewPiece, onOpenProjects }: TopBarProps) {
+export function TopBar({
+  onOpenNewPiece,
+  onOpenProjects,
+  aiOpen,
+  onToggleAi,
+}: TopBarProps) {
   const projectName = useProjectStore((s) => s.document.project.name);
   const displayUnit = useProjectStore((s) => s.document.project.displayUnit);
   const settings = useProjectStore((s) => s.document.settings);
@@ -142,6 +149,15 @@ export function TopBar({ onOpenNewPiece, onOpenProjects }: TopBarProps) {
             onClick={() => toggleSetting('showAccessories')}
           >
             Accesorios
+          </button>
+          <button
+            type="button"
+            className={`${styles.toggleBtn} ${aiOpen ? styles.toggleBtnActive : ''}`}
+            aria-pressed={aiOpen}
+            onClick={onToggleAi}
+            title="Abrir o cerrar el panel del Asistente IA"
+          >
+            ✦ Asistente IA
           </button>
         </div>
       </div>

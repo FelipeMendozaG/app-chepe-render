@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { loadAiConfig, type AiProviderConfig } from './persistence';
 import { useProjectStore } from './store';
 import { TopBar } from './ui/topbar/TopBar';
 import { LeftPanel } from './ui/left-panel/LeftPanel';
@@ -7,6 +8,8 @@ import { ViewportOverlay } from './ui/viewport/ViewportOverlay';
 import { RightPanel } from './ui/right-panel/RightPanel';
 import { NewPieceModal } from './ui/modals/NewPieceModal';
 import { ProjectsModal } from './ui/modals/ProjectsModal';
+import { AiChatDrawer } from './ui/ai/AiChatDrawer';
+import { AiSettingsModal } from './ui/ai/AiSettingsModal';
 import styles from './App.module.css';
 
 export function App() {
@@ -14,6 +17,11 @@ export function App() {
 
   const [newPieceOpen, setNewPieceOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiConfig, setAiConfig] = useState<AiProviderConfig>(() =>
+    loadAiConfig(),
+  );
   const [activeDragPresetId, setActiveDragPresetId] = useState<string | null>(
     null,
   );
@@ -54,6 +62,8 @@ export function App() {
       <TopBar
         onOpenNewPiece={() => setNewPieceOpen(true)}
         onOpenProjects={() => setProjectsOpen(true)}
+        aiOpen={aiDrawerOpen}
+        onToggleAi={() => setAiDrawerOpen((prev) => !prev)}
       />
 
       <div className={styles.workspace}>
@@ -86,6 +96,22 @@ export function App() {
       <ProjectsModal
         open={projectsOpen}
         onClose={() => setProjectsOpen(false)}
+        onNotify={showNotice}
+      />
+
+      <AiChatDrawer
+        open={aiDrawerOpen}
+        config={aiConfig}
+        onClose={() => setAiDrawerOpen(false)}
+        onOpenSettings={() => setAiSettingsOpen(true)}
+        onNotify={showNotice}
+      />
+
+      <AiSettingsModal
+        open={aiSettingsOpen}
+        config={aiConfig}
+        onConfigChange={setAiConfig}
+        onClose={() => setAiSettingsOpen(false)}
         onNotify={showNotice}
       />
     </div>

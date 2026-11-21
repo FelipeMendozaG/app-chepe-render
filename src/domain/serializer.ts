@@ -1,6 +1,10 @@
 import { DEFAULT_MATERIALS, DEFAULT_MATERIAL_ID } from './presets';
 import {
   SCHEMA_VERSION,
+  type AiChatMessage,
+  type AiChatPlanRecord,
+  type AiChatRole,
+  type AiPlanStatus,
   type DisplayUnit,
   type Entity,
   type EntityLayer,
@@ -248,8 +252,134 @@ function hasParentCycle(entities: readonly Entity[]): boolean {
   return false;
 }
 
+function isAiChatRole(value: unknown): value is AiChatRole {
+  return value === 'user' || value === 'assistant';
+}
+
+function isAiPlanStatus(value: unknown): value is AiPlanStatus {
+  return value === 'pending' || value === 'applied' || value === 'error';
+}
+
+function parseAiChatPlanRecord(
+  raw: unknown,
+  messageIndex: number,
+): AiChatPlanRecord | string {
+  if (!isRecord(raw)) {
+    return `El plan del mensaje #${messageIndex + 1} del chat IA no tiene un formato válido.`;
+  }
+  const { summary, items, status, errorMessage, appliedAt } = raw;
+  if (typeof summary !== 'string') {
+    return `El plan del mensaje #${messageIndex + 1} del chat IA no tiene un resumen válido.`;
+  }
+  if (!Array.isArray(items) || !items.every((item) => typeof item === 'string')) {
+    return `Los pasos del plan en el mensaje #${messageIndex + 1} del chat IA no son válidos.`;
+  }
+  if (!isAiPlanStatus(status)) {
+    return `El estado del plan en el mensaje #${messageIndex + 1} del chat IA no es válido.`;
+  }
+  if (errorMessage !== undefined && typeof errorMessage !== 'string') {
+    return `El mensaje de error del plan #${messageIndex + 1} no es válido.`;
+  }
+  if (appliedAt !== undefined && typeof appliedAt !== 'string') {
+    return `La fecha de aplicación del plan #${messageIndex + 1} no es válida.`;
+  }
+
+  return {
+    summary,
+    items: [...items],
+    status,
+    ...(errorMessage !== undefined ? { errorMessage } : {}),
+    ...(appliedAt !== undefined ? { appliedAt } : {}),
+  };
+}
+
+function parseAiChatHistory(raw: unknown): AiChatMessage[] | undefined | string {
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(raw)) {
+    return 'El historial del chat IA ("aiChatHistory") debe ser una lista.';
+  }
+  const messages: AiChatMessage[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const entry = raw[i];
+    if (!isRecord(entry)) {
+      return `El mensaje #${i + 1} del historial de chat IA no es válido.`;
+    }
+    const { id, role, text, createdAt, plan } = entry;
+    if (typeof id !== 'string' || !id.trim()) {
+      return `El mensaje #${i + 1} del historial de chat IA no tiene un identificador válido.`;
+    }
+    if (!isAiChatRole(role)) {
+      return `El mensaje #${i + 1} del historial de chat IA tiene un rol inválido.`;
+    }
+    if (typeof text !== 'string') {
+      return `El mensaje #${i + 1} del historial de chat IA no tiene texto válido.`;
+    }
+    if (typeof createdAt !== 'string' || !createdAt.trim()) {
+      return `El mensaje #${i + 1} del historial de chat IA no tiene una fecha válida.`;
+    }
+    let parsedPlan: AiChatPlanRecord | undefined;
+    if (plan !== undefined) {
+      const planResult = parseAiChatPlanRecord(plan, i);
+      if (typeof planResult === 'string') {
+        return planResult;
+      }
+      parsedPlan = planResult;
+    }
+    messages.push({
+      id: id.trim(),
+      role,
+      text,
+      createdAt,
+      ...(parsedPlan ? { plan: parsedPlan } : {}),
+    });
+  }
+  return messages;
+}
+
+function sanitizeAiChatHistory(
+  history: readonly AiChatMessage[] | undefined,
+): AiChatMessage[] | undefined {
+  if (!history || history.length === 0) {
+    return undefined;
+  }
+  return history.map((msg) => ({
+    id: msg.id,
+    role: msg.role,
+    text: msg.text,
+    createdAt: msg.createdAt,
+    ...(msg.plan
+      ? {
+          plan: {
+            summary: msg.plan.summary,
+            items: [...msg.plan.items],
+            status: msg.plan.status,
+            ...(msg.plan.errorMessage !== undefined
+              ? { errorMessage: msg.plan.errorMessage }
+              : {}),
+            ...(msg.plan.appliedAt !== undefined
+              ? { appliedAt: msg.plan.appliedAt }
+              : {}),
+          },
+        }
+      : {}),
+  }));
+}
+
 export function serializeProject(document: ProjectDocument): string {
-  return JSON.stringify(document, null, 2);
+  const sanitizedHistory = sanitizeAiChatHistory(document.aiChatHistory);
+  const cleanDocument: ProjectDocument = {
+    schemaVersion: document.schemaVersion,
+    project: document.project,
+    settings: document.settings,
+    materials: document.materials,
+    entities: document.entities,
+    parameters: document.parameters,
+    constraints: document.constraints,
+    ...(sanitizedHistory ? { aiChatHistory: sanitizedHistory } : {}),
+  };
+  return JSON.stringify(cleanDocument, null, 2);
 }
 
 export function deserializeProject(jsonText: string): DeserializeResult {
@@ -411,6 +541,11 @@ export function deserializeProject(jsonText: string): DeserializeResult {
     };
   }
 
+  const aiChatHistory = parseAiChatHistory(parsed.aiChatHistory);
+  if (typeof aiChatHistory === 'string') {
+    return { ok: false, error: aiChatHistory };
+  }
+
   const document: ProjectDocument = {
     schemaVersion: SCHEMA_VERSION,
     project: {
@@ -426,6 +561,7 @@ export function deserializeProject(jsonText: string): DeserializeResult {
     entities: entities as Array<Entity | PrimitiveEntity>,
     parameters: Array.isArray(parsed.parameters) ? parsed.parameters : [],
     constraints: Array.isArray(parsed.constraints) ? parsed.constraints : [],
+    ...(aiChatHistory && aiChatHistory.length > 0 ? { aiChatHistory } : {}),
   };
 
   return { ok: true, document };

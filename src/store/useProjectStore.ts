@@ -24,6 +24,8 @@ import {
   validateEntityName,
   validateGeometry,
   validateMaterial,
+  type AiChatMessage,
+  type AiChatPlanRecord,
   type CameraPreset,
   type DisplayUnit,
   type Entity,
@@ -159,6 +161,14 @@ export interface ProjectStoreState {
     patch: MaterialAppearancePatch,
     options?: UpdateMutationOptions,
   ) => boolean;
+
+  // AI chat history (persisted in ProjectDocument without touching 3D Undo stack)
+  appendAiChatMessage: (message: AiChatMessage) => void;
+  updateAiChatPlanStatus: (
+    messageId: string,
+    patch: Partial<AiChatPlanRecord>,
+  ) => void;
+  clearAiChatHistory: () => void;
 }
 
 const DEFAULT_PRESET_MATERIAL_IDS = new Set(
@@ -1100,6 +1110,56 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
       );
 
       return true;
+    },
+
+    appendAiChatMessage: (message) => {
+      applyDocumentChange(
+        (current) => ({
+          ...current,
+          aiChatHistory: [...(current.aiChatHistory ?? []), message],
+        }),
+        { recordHistory: false },
+      );
+    },
+
+    updateAiChatPlanStatus: (messageId, patch) => {
+      applyDocumentChange(
+        (current) => {
+          const history = current.aiChatHistory ?? [];
+          let changed = false;
+          const nextHistory = history.map((msg) => {
+            if (msg.id !== messageId || !msg.plan) return msg;
+            changed = true;
+            return {
+              ...msg,
+              plan: {
+                ...msg.plan,
+                ...patch,
+              },
+            };
+          });
+          if (!changed) return current;
+          return {
+            ...current,
+            aiChatHistory: nextHistory,
+          };
+        },
+        { recordHistory: false },
+      );
+    },
+
+    clearAiChatHistory: () => {
+      applyDocumentChange(
+        (current) => {
+          if (!current.aiChatHistory || current.aiChatHistory.length === 0) {
+            return current;
+          }
+          const next = { ...current };
+          delete next.aiChatHistory;
+          return next;
+        },
+        { recordHistory: false },
+      );
     },
   };
 });

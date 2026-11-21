@@ -116,6 +116,26 @@ export interface ProjectSettings {
   gridSpacing: number;
 }
 
+export type AiChatRole = 'user' | 'assistant';
+
+export type AiPlanStatus = 'pending' | 'applied' | 'error';
+
+export interface AiChatPlanRecord {
+  summary: string;
+  items: string[];
+  status: AiPlanStatus;
+  errorMessage?: string;
+  appliedAt?: string;
+}
+
+export interface AiChatMessage {
+  id: string;
+  role: AiChatRole;
+  text: string;
+  createdAt: string;
+  plan?: AiChatPlanRecord;
+}
+
 export interface ProjectDocument {
   schemaVersion: typeof SCHEMA_VERSION;
   project: ProjectMetadata;
@@ -124,6 +144,7 @@ export interface ProjectDocument {
   entities: Entity[];
   parameters: unknown[];
   constraints: unknown[];
+  aiChatHistory?: AiChatMessage[];
 }
 
 export interface AABB {

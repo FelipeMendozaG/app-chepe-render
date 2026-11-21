@@ -100,4 +100,48 @@ describe('serializer (schemaVersion: 1)', () => {
     );
     expect(deserializeProject(serializeProject(cyclic)).ok).toBe(false);
   });
+
+  it('conserva aiChatHistory en ida y vuelta y mantiene retrocompatibilidad cuando falta', () => {
+    const legacyDoc = createEmptyProjectDocument({ name: 'Proyecto sin chat' });
+    const legacyParsed = deserializeProject(serializeProject(legacyDoc));
+    expect(legacyParsed.ok).toBe(true);
+    if (legacyParsed.ok) {
+      expect(legacyParsed.document.aiChatHistory).toBeUndefined();
+    }
+
+    const withChat = createEmptyProjectDocument({ name: 'Proyecto con chat' });
+    withChat.aiChatHistory = [
+      {
+        id: 'msg-1',
+        role: 'user',
+        text: 'Crea una mesa de 140x70x75 cm',
+        createdAt: '2026-11-21T10:00:00.000Z',
+      },
+      {
+        id: 'msg-2',
+        role: 'assistant',
+        text: 'Crearé una mesa con cubierta y 4 patas.',
+        createdAt: '2026-11-21T10:00:03.000Z',
+        plan: {
+          summary: 'Mesa de roble 140×70×75 cm',
+          items: ['Crear grupo Mesa', 'Crear cubierta y 4 patas'],
+          status: 'applied',
+          appliedAt: '2026-11-21T10:00:10.000Z',
+        },
+      },
+    ];
+
+    const serialized = serializeProject(withChat);
+    const parsed = deserializeProject(serialized);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.document.aiChatHistory).toEqual(withChat.aiChatHistory);
+    }
+
+    const corruptedChat = JSON.stringify({
+      ...withChat,
+      aiChatHistory: [{ id: 'bad', role: 'invalid', text: 'x', createdAt: 'now' }],
+    });
+    expect(deserializeProject(corruptedChat).ok).toBe(false);
+  });
 });
